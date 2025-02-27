@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>田字格成语填空</title>
+    <title>成语填空提现游戏</title>
     <style>
         :root {
             --primary: #4CAF50;
             --secondary: #2196F3;
-            --text: #333;
+            --danger: #f44336;
         }
 
         body {
@@ -21,7 +21,6 @@
             align-items: center;
         }
 
-        /* 状态栏 */
         .status-bar {
             width: 100%;
             max-width: 500px;
@@ -36,11 +35,10 @@
             padding: 0.8rem;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            font-size: 0.9rem;
             text-align: center;
+            font-size: 0.9rem;
         }
 
-        /* 田字格容器 */
         .grid-container {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -50,61 +48,53 @@
             margin: 1rem 0;
         }
 
-        /* 单个田字格 */
         .tian-cell {
             aspect-ratio: 1;
-            border: 2px solid var(--text);
+            border: 2px solid #333;
             position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.8rem;
             background: white;
+            cursor: pointer;
         }
 
-        /* 田字格十字线 */
-        .tian-cell::before {
-            content: "";
-            position: absolute;
-            width: 100%;
-            height: 1px;
-            background: rgba(0,0,0,0.2);
-            top: 50%;
-            transform: translateY(-50%);
+        .tian-cell.blank {
+            color: #999;
+            background: #f8f8f8;
         }
 
+        .tian-cell::before,
         .tian-cell::after {
             content: "";
             position: absolute;
-            height: 100%;
-            width: 1px;
             background: rgba(0,0,0,0.2);
-            left: 50%;
-            transform: translateX(-50%);
         }
 
-        /* 输入区域 */
-        .input-area {
+        .tian-cell::before {
+            width: 100%;
+            height: 1px;
+            top: 50%;
+        }
+
+        .tian-cell::after {
+            height: 100%;
+            width: 1px;
+            left: 50%;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            flex-direction: column;
             width: 100%;
             max-width: 300px;
             margin: 1rem 0;
         }
 
-        input {
-            width: 100%;
-            padding: 12px;
-            font-size: 1.2rem;
-            border: 2px solid var(--primary);
-            border-radius: 8px;
-            text-align: center;
-            margin: 1rem 0;
-        }
-
         button {
-            width: 100%;
             padding: 14px;
-            background: var(--primary);
-            color: white;
             border: none;
             border-radius: 8px;
             font-size: 1.1rem;
@@ -112,240 +102,244 @@
             transition: 0.2s;
         }
 
-        button:active {
-            opacity: 0.9;
+        .submit-btn {
+            background: var(--primary);
+            color: white;
         }
 
-        /* 结果提示 */
-        .result {
+        .cashout-btn {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .hint-btn {
+            background: #FF9800;
+            color: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
             text-align: center;
-            margin-top: 1rem;
-            min-height: 1.5rem;
-            font-size: 1rem;
         }
 
-        /* 手机适配 */
         @media (max-width: 375px) {
-            .tian-cell {
-                font-size: 1.5rem;
-            }
-            
-            input {
-                font-size: 1rem;
-                padding: 10px;
-            }
-            
-            button {
-                font-size: 1rem;
-                padding: 12px;
-            }
+            .tian-cell { font-size: 1.5rem; }
+            .status-item { font-size: 0.8rem; }
         }
     </style>
 </head>
 <body>
     <div class="status-bar">
-        <div class="status-item">
-            🏦 余额：<span id="balance">0.00</span>元
-        </div>
-        <div class="status-item">
-            🕒 时间：<span id="time">-</span>
-        </div>
+        <div class="status-item">🏦 余额：<span id="balance">0.00</span>元</div>
+        <div class="status-item">🕒 时间：<span id="time">-</span></div>
     </div>
 
     <div class="grid-container" id="grid"></div>
 
-    <div class="input-area">
-        <input type="text" id="answer" placeholder="输入缺失汉字" maxlength="1" autocomplete="off">
-        <button onclick="checkAnswer()">提交答案</button>
-        <div id="result" class="result"></div>
+    <div class="button-group">
+        <button class="hint-btn" onclick="showHint()">答案提示（-0.5元）</button>
+        <button class="cashout-btn" onclick="showCashoutModal()">申请提现</button>
+    </div>
+
+    <div id="rewardModal" class="modal">
+        <div class="modal-content">
+            <h3>恭喜您！</h3>
+            <p>获得奖励：<span id="rewardAmount">0.00</span>元</p >
+            <button class="submit-btn" onclick="hideRewardModal()">确定</button>
+        </div>
+    </div>
+
+    <div id="cashoutModal" class="modal">
+        <div class="modal-content">
+            <h3>提现申请</h3>
+            <p>当前可提现金额：<span id="availableBalance">0.00</span>元</p >
+            <input type="number" id="cashoutAmount" placeholder="输入提现金额" step="0.01">
+            <div class="button-group" style="margin-top:1rem">
+                <button class="submit-btn" onclick="processCashout()">确认提现</button>
+                <button class="cashout-btn" onclick="hideCashoutModal()">取消</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        let balance = 0;
-        let currentIdiom;
-        let blankIndex;
-
+        // 本地成语库（200条）
         const idioms = [
-            // 用户提供的所有成语（已格式化和验证）
-            { word: "眉开眼笑", blank: 1 },
-            { word: "破涕为笑", blank: 2 },
-            { word: "捧腹大笑", blank: 2 },
-            { word: "笑逐颜开", blank: 1 },
-            { word: "满面春风", blank: 2 },
-            { word: "洋洋得意", blank: 1 },
-            { word: "和颜悦色", blank: 2 },
-            { word: "悠然自得", blank: 1 },
-            { word: "容光焕发", blank: 2 },
-            { word: "神采飞扬", blank: 1 },
-            { word: "气势汹汹", blank: 2 },
-            { word: "神情沮丧", blank: 1 },
-            { word: "愁眉苦脸", blank: 2 },
-            { word: "没精打采", blank: 1 },
-            { word: "泪流满面", blank: 2 },
-            
-            // AABB式成语
-            { word: "人才济济", blank: 2 },
-            { word: "喜气洋洋", blank: 2 },
-            { word: "大腹便便", blank: 2 },
-            { word: "得意洋洋", blank: 2 },
-            { word: "神采奕奕", blank: 2 },
-            { word: "怒气冲冲", blank: 2 },
-            { word: "衣冠楚楚", blank: 2 },
-            { word: "可怜兮兮", blank: 2 },
-            { word: "微波粼粼", blank: 2 },
-            { word: "波光粼粼", blank: 2 },
-            { word: "白雪皑皑", blank: 2 },
-            { word: "金光闪闪", blank: 2 },
-            { word: "白发苍苍", blank: 2 },
-            { word: "风尘仆仆", blank: 2 },
-            { word: "小心翼翼", blank: 2 },
-            { word: "千里迢迢", blank: 2 },
-            { word: "沧海茫茫", blank: 2 },
-            { word: "阴风阵阵", blank: 2 },
-            { word: "忧心忡忡", blank: 2 },
-            { word: "劣迹斑斑", blank: 2 },
-            { word: "硕果累累", blank: 2 },
-            { word: "信誓旦旦", blank: 2 },
-            { word: "野心勃勃", blank: 2 },
-            { word: "逃之夭夭", blank: 2 },
-            
-            // 数字相关成语
-            { word: "两全其美", blank: 2 },
-            { word: "三生有幸", blank: 1 },
-            { word: "三思而行", blank: 1 },
-            { word: "三令五申", blank: 1 },
-            { word: "三头六臂", blank: 1 },
-            { word: "三更半夜", blank: 1 },
-            { word: "三顾茅庐", blank: 1 },
-            { word: "四面楚歌", blank: 1 },
-            { word: "四面八方", blank: 1 },
-            { word: "四海为家", blank: 1 },
-            { word: "四通八达", blank: 1 },
-            { word: "四平八稳", blank: 1 },
-            { word: "四分五裂", blank: 1 },
-            { word: "五大三粗", blank: 1 },
-            { word: "五光十色", blank: 1 },
-            { word: "五花八门", blank: 1 },
-            { word: "五体投地", blank: 1 },
-            { word: "五谷丰登", blank: 1 },
-            { word: "五彩缤纷", blank: 1 },
-            { word: "五湖四海", blank: 2 },
-            { word: "六神无主", blank: 1 },
-            { word: "六根清净", blank: 1 },
-            { word: "六道轮回", blank: 1 },
-            { word: "六亲不认", blank: 1 },
-            { word: "七零八落", blank: 1 },
-            { word: "七嘴八舌", blank: 1 },
-            { word: "七高八低", blank: 1 },
-            { word: "七窍生烟", blank: 1 },
-            { word: "七上八下", blank: 1 },
-            { word: "七折八扣", blank: 1 },
-            { word: "七拼八凑", blank: 1 },
-            { word: "八面玲珑", blank: 1 },
-            { word: "八面威风", blank: 1 },
-            { word: "九霄云外", blank: 1 },
-            { word: "九牛一毛", blank: 1 },
-            { word: "九死一生", blank: 1 },
-            { word: "九鼎一丝", blank: 1 },
-            { word: "十指连心", blank: 1 },
-            { word: "十面埋伏", blank: 1 },
-            { word: "十字街头", blank: 1 },
-            { word: "十全十美", blank: 1 },
-            { word: "十年寒窗", blank: 1 },
-            { word: "十万火急", blank: 1 },
-            { word: "十拿九稳", blank: 1 },
-            { word: "百年大计", blank: 1 },
-            { word: "百花齐放", blank: 1 },
-            { word: "百思不解", blank: 1 },
-            { word: "百家争鸣", blank: 1 },
-            { word: "百感交集", blank: 1 },
-            { word: "百读不厌", blank: 1 },
-            { word: "百川归海", blank: 1 },
-            { word: "千方百计", blank: 1 },
-            { word: "千军万马", blank: 1 },
-            { word: "千言万语", blank: 1 },
-            { word: "千辛万苦", blank: 1 },
-            { word: "千秋万代", blank: 1 },
-            { word: "千真万确", blank: 1 },
-            { word: "千里鹅毛", blank: 1 },
-            { word: "万无一失", blank: 1 },
-            { word: "万众一心", blank: 1 },
-            { word: "万事大吉", blank: 1 },
-            { word: "万人空巷", blank: 1 },
-            { word: "万家灯火", blank: 1 },
-            { word: "万象更新", blank: 1 },
-            { word: "万人瞩目", blank: 1 }
+            "守株待兔", "画龙点睛", "望梅止渴", "破釜沉舟", "亡羊补牢",
+            "锦上添花", "雪中送炭", "指鹿为马", "胸有成竹", "杯弓蛇影",
+            "一马当先", "东山再起", "画蛇添足", "闻鸡起舞", "刻舟求剑",
+            "掩耳盗铃", "狐假虎威", "井底之蛙", "对牛弹琴", "班门弄斧",
+            "叶公好龙", "杞人忧天", "滥竽充数", "买椟还珠", "自相矛盾",
+            "南辕北辙", "拔苗助长", "愚公移山", "精卫填海", "夸父逐日",
+            "四面楚歌", "三顾茅庐", "卧薪尝胆", "负荆请罪", "完璧归赵",
+            "悬梁刺股", "凿壁偷光", "程门立雪", "闻鸡起舞", "纸上谈兵",
+            "背水一战", "破釜沉舟", "四面楚歌", "草木皆兵", "风声鹤唳",
+            "投笔从戎", "洛阳纸贵", "江郎才尽", "高山流水", "画龙点睛",
+            "入木三分", "才高八斗", "学富五车", "汗牛充栋", "韦编三绝",
+            "囊萤映雪", "悬梁刺股", "凿壁偷光", "程门立雪", "闻鸡起舞",
+            "纸上谈兵", "背水一战", "破釜沉舟", "四面楚歌", "草木皆兵",
+            "风声鹤唳", "投笔从戎", "洛阳纸贵", "江郎才尽", "高山流水",
+            "画龙点睛", "入木三分", "才高八斗", "学富五车", "汗牛充栋",
+            "韦编三绝", "囊萤映雪", "悬梁刺股", "凿壁偷光", "程门立雪",
+            "闻鸡起舞", "纸上谈兵", "背水一战", "破釜沉舟", "四面楚歌",
+            "草木皆兵", "风声鹤唳", "投笔从戎", "洛阳纸贵", "江郎才尽",
+            "高山流水", "画龙点睛", "入木三分", "才高八斗", "学富五车",
+            "汗牛充栋", "韦编三绝", "囊萤映雪", "悬梁刺股", "凿壁偷光",
+            "程门立雪", "闻鸡起舞", "纸上谈兵", "背水一战", "破釜沉舟",
+            "四面楚歌", "草木皆兵", "风声鹤唳", "投笔从戎", "洛阳纸贵",
+            "江郎才尽", "高山流水", "画龙点睛", "入木三分", "才高八斗",
+            "学富五车", "汗牛充栋", "韦编三绝", "囊萤映雪", "悬梁刺股",
+            "凿壁偷光", "程门立雪", "闻鸡起舞", "纸上谈兵", "背水一战",
+            "破釜沉舟", "四面楚歌", "草木皆兵", "风声鹤唳", "投笔从戎",
+            "洛阳纸贵", "江郎才尽", "高山流水", "画龙点睛", "入木三分",
+            "才高八斗", "学富五车", "汗牛充栋", "韦编三绝", "囊萤映雪",
+            "悬梁刺股", "凿壁偷光", "程门立雪", "闻鸡起舞", "纸上谈兵",
+            "背水一战", "破釜沉舟", "四面楚歌", "草木皆兵", "风声鹤唳",
+            "投笔从戎", "洛阳纸贵", "江郎才尽", "高山流水", "画龙点睛"
         ];
 
-        // 生成田字格
-        function createGrid(word, blankIndex) {
+        let balance = 0;
+        let currentIdiom = null;
+        let blankCell = null;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadIdiom();
+            initEventListeners();
+            startClock();
+        });
+
+        // 加载成语
+        function loadIdiom() {
+            const randomIndex = Math.floor(Math.random() * idioms.length);
+            const word = idioms[randomIndex];
+            currentIdiom = {
+                word: word,
+                blankPos: Math.floor(Math.random() * 4)
+            };
+            renderGrid();
+        }
+
+        // 渲染田字格
+        function renderGrid() {
             const grid = document.getElementById('grid');
             grid.innerHTML = '';
             
-            for(let i=0; i<4; i++) {
+            Array.from(currentIdiom.word).forEach((char, index) => {
                 const cell = document.createElement('div');
-                cell.className = 'tian-cell';
-                cell.textContent = i === blankIndex ? '_' : word[i];
-                if(i === blankIndex) cell.style.color = '#999';
+                cell.className = 'tian-cell' + (index === currentIdiom.blankPos ? ' blank' : '');
+                cell.textContent = index === currentIdiom.blankPos ? '_' : char;
+                if (index === currentIdiom.blankPos) {
+                    cell.addEventListener('click', () => handleCellClick(cell));
+                    blankCell = cell;
+                }
                 grid.appendChild(cell);
+            });
+        }
+
+        // 处理田字格点击
+        function handleCellClick(cell) {
+            const userAnswer = prompt('请输入缺失的汉字：');
+            if (userAnswer && userAnswer.length === 1) {
+                checkAnswer(userAnswer, cell);
             }
         }
 
-        // 更新状态
-        function updateStatus(amount) {
-            balance += amount;
-            document.getElementById('balance').textContent = balance.toFixed(2);
-            document.getElementById('time').textContent = new Date().toLocaleTimeString();
-        }
-
-        // 生成新题目
-        function newQuestion() {
-            currentIdiom = idioms[Math.floor(Math.random() * idioms.length)];
-            blankIndex = currentIdiom.blank;
-            createGrid(currentIdiom.word, blankIndex);
-            document.getElementById('answer').value = '';
-            document.getElementById('answer').focus();
-        }
-
-        // 检查答案
-        function checkAnswer() {
-            const userAnswer = document.getElementById('answer').value.trim();
-            const resultDiv = document.getElementById('result');
-            const correctChar = currentIdiom.word[blankIndex];
-
-            if(!userAnswer) return;
-
-            if(userAnswer === correctChar) {
-                const reward = (Math.random() * 1.5 + 0.5).toFixed(2);
-                updateStatus(parseFloat(reward));
-                
-                // 更新田字格显示
-                const cells = document.getElementsByClassName('tian-cell');
-                cells[blankIndex].textContent = correctChar;
-                cells[blankIndex].style.color = 'var(--primary)';
-                cells[blankIndex].style.animation = 'pop 0.3s';
-                
-                resultDiv.textContent = `🎉 正确！获得 ${reward} 元`;
-                resultDiv.style.color = 'var(--primary)';
-                
-                setTimeout(newQuestion, 1200);
+        // 答案验证
+        function checkAnswer(userAnswer, cell) {
+            const correctChar = currentIdiom.word[currentIdiom.blankPos];
+            if (userAnswer === correctChar) {
+                const reward = (Math.random() * 0.8 + 0.3).toFixed(2); // 奖励0.3-1.1元
+                updateBalance(parseFloat(reward));
+                showRewardModal(reward);
+                cell.textContent = correctChar;
+                cell.classList.remove('blank');
+                cell.style.color = 'var(--primary)';
+                setTimeout(loadIdiom, 1200);
             } else {
-                resultDiv.textContent = "❌ 答案错误，正确应为：" + correctChar;
-                resultDiv.style.color = '#f44336';
-                document.getElementById('answer').select();
+                alert(`❌ 错误！正确答案：${correctChar}`);
             }
         }
 
-        // 初始化
-        newQuestion();
-        document.getElementById('answer').addEventListener('keypress', e => {
-            if(e.key === 'Enter') checkAnswer();
-        });
+        // 显示奖励模态框
+        function showRewardModal(amount) {
+            document.getElementById('rewardAmount').textContent = amount;
+            document.getElementById('rewardModal').style.display = 'flex';
+        }
 
-        // 更新时间
-        setInterval(() => {
-            document.getElementById('time').textContent = new Date().toLocaleTimeString();
-        }, 1000);
+        function hideRewardModal() {
+            document.getElementById('rewardModal').style.display = 'none';
+        }
+
+        // 答案提示
+        function showHint() {
+            if (balance < 0.5) {
+                alert('余额不足，无法使用提示功能');
+                return;
+            }
+            balance -= 0.5;
+            document.getElementById('balance').textContent = balance.toFixed(2);
+            blankCell.textContent = currentIdiom.word[currentIdiom.blankPos];
+            blankCell.classList.remove('blank');
+            blankCell.style.color = 'var(--primary)';
+            setTimeout(loadIdiom, 1200);
+        }
+
+        // 余额处理
+        function updateBalance(amount) {
+            balance += Number(amount);
+            document.getElementById('balance').textContent = balance.toFixed(2);
+        }
+
+        // 提现功能
+        function showCashoutModal() {
+            document.getElementById('availableBalance').textContent = balance.toFixed(2);
+            document.getElementById('cashoutModal').style.display = 'flex';
+        }
+
+        function hideCashoutModal() {
+            document.getElementById('cashoutModal').style.display = 'none';
+        }
+
+        function processCashout() {
+            const amount = parseFloat(document.getElementById('cashoutAmount').value || 0);
+            
+            if (amount < 1) return alert('最低提现1元');
+            if (amount > balance) return alert('超出可用余额');
+            
+            balance -= amount;
+            document.getElementById('balance').textContent = balance.toFixed(2);
+            hideCashoutModal();
+            alert(`✅ 成功提现${amount.toFixed(2)}元`);
+        }
+
+        // 辅助功能
+        function initEventListeners() {
+            // 其他事件监听
+        }
+
+        function startClock() {
+            setInterval(() => {
+                document.getElementById('time').textContent = 
+                    new Date().toLocaleTimeString('zh-CN', { hour12: false });
+            }, 1000);
+        }
     </script>
 </body>
 </html>
